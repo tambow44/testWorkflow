@@ -47,7 +47,7 @@ jobs:
                 }]' data/elo_data.json > tmp.json && mv tmp.json data/elo_data.json
           done
         env:
-          TEST_TIME: ${{ vars.TEST_TIME }}
+          TEST_TIME: ${{ secrets.TEST_TIME }}
 
       - name: Commit and Push JSON
         env:
