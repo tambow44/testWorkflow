@@ -1,0 +1,57 @@
+name: Update ELO Data
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # Runs every 5mins
+  push:
+    branches:
+      - main
+
+jobs:
+  update-elo-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get install -y jq
+
+      - name: Fetch ELO Data and Update JSON
+        run: |
+          set -e
+          STEAM_IDS=()
+          while IFS= read -r line; do
+            steamId=$(echo "$line" | jq -r '.steamId')
+            [ -n "$steamId" ] && STEAM_IDS+=("$steamId")
+          done < <(jq -c '.[]' data/players.json)
+
+          [ ! -d data ] && mkdir -p data
+          echo "[]" > data/elo_data.json
+
+          for steamId in "${STEAM_IDS[@]}"; do
+            response=$(curl -s "https://aoe-api.reliclink.com/community/leaderboard/GetPersonalStat?title=age2&profile_names=\[%22$steamId%22\]")
+            elo1v1=$(echo "$response" | jq '.leaderboardStats[] | select(.leaderboard_id == 3) | .rating')
+            eloTeam=$(echo "$response" | jq '.leaderboardStats[] | select(.leaderboard_id == 4) | .rating')
+            [ -z "$elo1v1" ] && elo1v1=null
+            [ -z "$eloTeam" ] && eloTeam=null
+            jq --arg steamId "$steamId" --argjson elo1v1 "$elo1v1" --argjson eloTeam "$eloTeam" \
+            '. += [{
+              "steamId": $steamId,
+              "elo1v1": $elo1v1,
+              "eloTeam": $eloTeam
+                }]' data/elo_data.json > tmp.json && mv tmp.json data/elo_data.json
+          done
+
+      - name: Commit and Push JSON
+        env:
+          CLASSIC_PAT: ${{ secrets.CLASSIC_PAT }}
+        run: |
+          if [[ "$(git status --porcelain | wc -l)" -gt 0 ]] ; then
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+            git remote set-url origin https://x-access-token:${{ secrets.CLASSIC_PAT }}@github.com/${{ github.repository }}
+            git add data/elo_data.json
+            git commit -m "Update ELO data"
+            git push origin HEAD:main
+          fi
