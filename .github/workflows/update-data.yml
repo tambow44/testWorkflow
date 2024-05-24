@@ -46,11 +46,11 @@ jobs:
                 }]' data/elo_data.json > tmp.json && mv tmp.json data/elo_data.json
           done
         env:
-          TEST_TIME: ${{ secrets.TEST_TIME }}
+          TEST_TIME: ${{ env.TEST_TIME }}
 
       - name: Commit and Push JSON
         env:
-          CLASSIC_PAT: ${{ secrets.CLASSIC_PAT }}
+          CLASSIC_PAT: ${{ vars.CLASSIC_PAT }}
         run: |
           if [[ "$(git status --porcelain | wc -l)" -gt 0 ]] ; then
             git config --global user.name 'github-actions[bot]'
