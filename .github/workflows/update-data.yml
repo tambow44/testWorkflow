@@ -50,7 +50,7 @@ jobs:
 
       - name: Commit and Push JSON
         env:
-          CLASSIC_PAT: ${{ vars.CLASSIC_PAT }}
+          ACTIONS_PAT: ${{ vars.ACTIONS_PAT  }}
         run: |
           if [[ "$(git status --porcelain | wc -l)" -gt 0 ]] ; then
             git config --global user.name 'github-actions[bot]'
